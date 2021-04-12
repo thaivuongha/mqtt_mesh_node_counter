@@ -1,5 +1,5 @@
 
-set(COMPONENT_SRCS "mqtt_example.c")
+set(COMPONENT_SRCS "main_mesh_node.c")
 
 set(COMPONENT_ADD_INCLUDEDIRS "")
 

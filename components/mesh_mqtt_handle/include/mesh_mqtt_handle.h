@@ -126,6 +126,17 @@ mdf_err_t mesh_mqtt_read(mesh_mqtt_data_t **request, TickType_t wait_ticks);
 mdf_err_t mesh_mqtt_start(char *url);
 
 /**
+* @brief  start mqtt client
+*
+* @param  url mqtt connect url
+*
+* @return
+*     - MDF_OK
+*     - MDF_FAIL
+*/
+mdf_err_t mesh_mqtt_start_topic(char *url, char *topic, char *port);
+
+/**
  * @brief  stop mqtt client
  *
  * @return

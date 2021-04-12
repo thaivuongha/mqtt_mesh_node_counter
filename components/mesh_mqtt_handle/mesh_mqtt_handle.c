@@ -401,6 +401,27 @@ mdf_err_t mesh_mqtt_start(char *url)
     return MDF_OK;
 }
 
+mdf_err_t mesh_mqtt_start_topic(char *url, char *topic, char *port)
+{
+    MDF_PARAM_CHECK(url);
+    MDF_ERROR_CHECK(g_mesh_mqtt.client != NULL, MDF_ERR_INVALID_STATE, "MQTT client is already running");
+
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = url,
+        .event_handle = mqtt_event_handler,
+        // .client_cert_pem = (const char *)client_cert_pem_start,
+        // .client_key_pem = (const char *)client_key_pem_start,
+    };
+    MDF_ERROR_ASSERT(esp_read_mac(g_mesh_mqtt.addr, ESP_MAC_WIFI_STA));
+    snprintf(g_mesh_mqtt.topo_topic, sizeof(g_mesh_mqtt.topo_topic), topo_topic_template, MAC2STR(g_mesh_mqtt.addr));
+    strcpy(g_mesh_mqtt.publish_topic, topic);
+    g_mesh_mqtt.queue = xQueueCreate(5, sizeof(mesh_mqtt_data_t *));
+    g_mesh_mqtt.client = esp_mqtt_client_init(&mqtt_cfg);
+    MDF_ERROR_ASSERT(esp_mqtt_client_start(g_mesh_mqtt.client));
+
+    return MDF_OK;
+}
+
 mdf_err_t mesh_mqtt_stop()
 {
     MDF_ERROR_CHECK(g_mesh_mqtt.client == NULL, MDF_ERR_INVALID_STATE, "MQTT client has not been started");
