@@ -639,7 +639,7 @@ size = strlen(data);
 MDF_LOGI("Node send, size: %d, data: %s", size, data);
 ret = mwifi_write(NULL, &data_type, data, size, true);
 MDF_FREE(data);
-printf("heap MDF_FREE %d \n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+ESP_LOGI(TAG, "heap MDF_FREE %d \n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
 return true;
 }
 
@@ -665,7 +665,6 @@ if (xQueueReceive(uart0_queue, (void*) &event, (portTickType) portMAX_DELAY)) {
 		// Parse data -> assign to queue -> send queue
 		communicate_msg = parse_data_uart((const char*) dtmp);
 		xQueueSend(queue_data_communicate, &communicate_msg, 0);
-		uart_write_bytes(EX_UART_NUM, (const char*) dtmp, event.size);
 		break;
 		//Event of HW FIFO overflow detected
 	case UART_FIFO_OVF:
@@ -772,16 +771,16 @@ xQueueReceive(queue_data_communicate, &communicate_msg,
 		(portTickType) portMAX_DELAY);
 switch (communicate_msg.type) {
 case UPDATE_DATA_EVT:
-	printf("evetn: UPDATE_DATA_EVT , data uart: %s \n", communicate_msg.data);
+	ESP_LOGI(TAG, "evetn: UPDATE_DATA_EVT , data uart: %s \n",
+			communicate_msg.data);
 	// need to free pointer
 	send_mqtt_msg(communicate_msg.data);
 	free(communicate_msg.data);
 	break;
 case SETTING_EVT:
 	// go to setting statement
-	printf("setting cmd: %s \n", communicate_msg.data);
+	ESP_LOGI(TAG, "setting cmd: %s \n", communicate_msg.data);
 	restart_to_configure_program();
-
 	break;
 case PING_EVT:
 	// send ACK back to STM32. If time out ,ESP32 will be restart
@@ -803,7 +802,8 @@ cJSON *json = NULL;
 cJSON *json_manager_infor = NULL;
 cJSON *json_device_infor = NULL;
 cJSON *tool_status = NULL;
-printf("heap before %d \n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+ESP_LOGI(TAG, "heap before %d \n",
+	heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
 
 #define NUM_TOOL 9
 json = cJSON_CreateObject();
@@ -821,10 +821,10 @@ cJSON_AddStringToObject(json_manager_infor, "name", manager_infor.name);
 manager_infor.layer = esp_mesh_get_layer();
 cJSON_AddNumberToObject(json_manager_infor, "layer", (int) manager_infor.layer);
 
-sscanf(param, "%d,%d,%d,%d,%d,%d,%d,%d,%d:%d,%d,%d,%d,%d,%d,%d,%d,%d", &vts[0],
-	&vts[1], &vts[2], &vts[3], &vts[4], &vts[5], &vts[6], &vts[7], &vts[8],
-	&vtc[0], &vtc[1], &vtc[2], &vtc[3], &vtc[4], &vtc[5], &vtc[6], &vtc[7],
-	&vtc[8]);
+sscanf(param, "%d,%d,%d,%d,%d,%d,%d,%d,%d:%d,%d,%d,%d,%d,%d,%d,%d,%d", &vtc[0],
+	&vtc[1], &vtc[2], &vtc[3], &vtc[4], &vtc[5], &vtc[6], &vtc[7], &vtc[8],
+	&vts[0], &vts[1], &vts[2], &vts[3], &vts[4], &vts[5], &vts[6], &vts[7],
+	&vts[8]);
 manager_infor.expired = false;
 for (int i = 0; i < NUM_TOOL; i++) {
 if (vtc[i] >= vts[i]) {
@@ -832,12 +832,9 @@ if (vtc[i] >= vts[i]) {
 }
 }
 cJSON_AddBoolToObject(json_manager_infor, "expired", manager_infor.expired);
-
-//	cJSON_AddItemToObject(json, "toolStatus", tool_status);
 tool_status = cJSON_AddArrayToObject(json, "toolStatus");
 
 for (int i = 0; i < NUM_TOOL; i++) {
-
 cJSON *component_array = cJSON_CreateObject();
 if (cJSON_AddNumberToObject(component_array, "set", vts[i]) == NULL) {
 	return NULL;
@@ -863,7 +860,6 @@ strcpy(manager_infor.name, name_node_default);
 }
 
 void get_infor_hardware_device(void) {
-
 strcpy(device_infor.firmware, firmware_version_node);
 strcpy(device_infor.hardware, hardware_version_node);
 strcpy(device_infor.serial, serial_number_node);
@@ -894,6 +890,10 @@ queue_data_communicate = xQueueCreate(2, sizeof(type_data_communicate_t));
  */
 get_infor_configure();
 get_infor_hardware_device();
+MDF_ERROR_ASSERT(uart_start());
+uart_write_bytes(EX_UART_NUM, "Start program\n", 14);
+xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 2, NULL);
+vTaskDelay(4000 / portTICK_RATE_MS);
 
 /**
  * @brief Initialize wifi mesh.
@@ -903,16 +903,13 @@ MDF_ERROR_ASSERT(wifi_init());
 MDF_ERROR_ASSERT(mwifi_init(&cfg));
 MDF_ERROR_ASSERT(mwifi_set_config(&mesh_config));
 MDF_ERROR_ASSERT(mwifi_start());
-MDF_ERROR_ASSERT(uart_start());
-uart_write_bytes(EX_UART_NUM, "Start program\n", 14);
-//    /**
-//     * @brief Create node handler
-//     */
 
+/**
+ * @brief Create node handler
+ */
 TimerHandle_t timer = xTimerCreate("print_system_info",
 	10000 / portTICK_RATE_MS, true, NULL, print_system_info_timercb);
 xTimerStart(timer, 0);
 xTaskCreate(main_processing_task, "process", 4096, NULL, 2, NULL);
-xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 2, NULL);
 
 }
