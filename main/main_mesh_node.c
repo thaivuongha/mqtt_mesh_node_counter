@@ -76,6 +76,8 @@ typedef struct {
 	char id_mesh[32];
 	char pass_mesh[32];
 	char mqtt_broker[32];
+	char mqtt_username[32];
+	char mqtt_password[32];
 	char mqtt_topic[32];
 	char mqtt_port[8];
 } network_infor_t;
@@ -99,8 +101,11 @@ mwifi_config_t mesh_config;
 
 char id_node_default[8] = "000000";
 char name_node_default[16] = "CT-0000";
-char mqtt_broker_default[32] = "mqtt.eclipseprojects.io";
-char mqtt_topic_default[32] = "MESH";
+char mqtt_broker_default[32] = "mqtt:mvpiot.vn";
+char mqtt_host_default[32] = "103.56.158.93";
+char mqtt_username_default[32] = "mqttbroker";
+char mqtt_password_default[32] = "tech@marueivn.com";
+char mqtt_topic_default[32] = "mesh";
 
 /*Infor network */
 char ssid_wifi_default[32] = "myLab";
@@ -146,7 +151,6 @@ void restart_to_configure_program(void) {
 	}
 	vTaskDelay(100 / portTICK_PERIOD_MS);
 	esp_restart();
-
 }
 
 void init_spiffs(void) {
@@ -210,6 +214,8 @@ void get_infor_configure(void) {
 	cJSON *json_mesh_password;
 	cJSON *json_type_node;
 	cJSON *json_mqtt_server;
+	cJSON *json_mqtt_username;
+	cJSON *json_mqtt_password;
 	cJSON *json_mqtt_port;
 	cJSON *json_mqtt_api;
 	cJSON *json_device_name;
@@ -244,6 +250,10 @@ void get_infor_configure(void) {
 	// Configure MQTT
 	json_mqtt_server = cJSON_GetObjectItemCaseSensitive(monitor_json,
 			"mqtt_server");
+	json_mqtt_username = cJSON_GetObjectItemCaseSensitive(monitor_json,
+			"mqtt_username");
+	json_mqtt_password = cJSON_GetObjectItemCaseSensitive(monitor_json,
+			"mqtt_password");
 	json_mqtt_port = cJSON_GetObjectItemCaseSensitive(monitor_json,
 			"mqtt_port");
 	json_mqtt_api = cJSON_GetObjectItemCaseSensitive(monitor_json, "api_token");
@@ -321,6 +331,21 @@ void get_infor_configure(void) {
 		strcpy(network_infor.mqtt_broker, mqtt_broker_default);
 	}
 
+	if (cJSON_IsString(json_mqtt_username)
+			&& (json_mqtt_username->valuestring != NULL)) {
+		ESP_LOGI(TAG, "mqtt_username: \"%s\"\n", json_mqtt_username->valuestring);
+		strcpy(network_infor.mqtt_username, json_mqtt_username->valuestring);
+	} else {
+		strcpy(network_infor.mqtt_username, mqtt_username_default);
+	}
+
+	if (cJSON_IsString(json_mqtt_password)
+			&& (json_mqtt_password->valuestring != NULL)) {
+		ESP_LOGI(TAG, "mqtt_password: \"%s\"\n", json_mqtt_password->valuestring);
+		strcpy(network_infor.mqtt_password, json_mqtt_password->valuestring);
+	} else {
+		strcpy(network_infor.mqtt_password, mqtt_password_default);
+	}
 	if (cJSON_IsString(json_mqtt_api) && (json_mqtt_api->valuestring != NULL)) {
 		ESP_LOGI(TAG, "api_token: \"%s\"\n", json_mqtt_api->valuestring);
 		strcpy(network_infor.mqtt_topic, json_mqtt_api->valuestring);
@@ -581,7 +606,7 @@ case MDF_EVENT_MWIFI_ROOT_GOT_IP: {
 MDF_LOGI(
 		"Root obtains the IP address. It is posted by LwIP stack automatically");
 
-mesh_mqtt_start_topic(network_infor.mqtt_broker, network_infor.mqtt_topic,
+mesh_mqtt_start_topic(network_infor.mqtt_broker, network_infor.mqtt_username, network_infor.mqtt_password, network_infor.mqtt_topic,
 NULL);
 
 xTaskCreate(root_write_task, "root_write", 4 * 1024,
@@ -880,8 +905,9 @@ ret = nvs_flash_init();
 }
 
 esp_log_level_set("*", ESP_LOG_INFO);
-esp_log_level_set(TAG, ESP_LOG_DEBUG);
-esp_log_level_set("mesh_mqtt", ESP_LOG_DEBUG);
+//esp_log_level_set(TAG, ESP_LOG_DEBUG);
+//esp_log_level_set("mesh_mqtt", ESP_LOG_DEBUG);
+esp_log_level_set("wifi", ESP_LOG_WARN);
 
 queue_data_communicate = xQueueCreate(2, sizeof(type_data_communicate_t));
 

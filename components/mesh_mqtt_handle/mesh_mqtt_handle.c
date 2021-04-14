@@ -401,13 +401,15 @@ mdf_err_t mesh_mqtt_start(char *url)
     return MDF_OK;
 }
 
-mdf_err_t mesh_mqtt_start_topic(char *url, char *topic, char *port)
+mdf_err_t mesh_mqtt_start_topic(char *url,char *username, char *password, char *topic, char *port)
 {
     MDF_PARAM_CHECK(url);
     MDF_ERROR_CHECK(g_mesh_mqtt.client != NULL, MDF_ERR_INVALID_STATE, "MQTT client is already running");
 
     esp_mqtt_client_config_t mqtt_cfg = {
         .uri = url,
+		.username = username,
+        .password = password,
         .event_handle = mqtt_event_handler,
         // .client_cert_pem = (const char *)client_cert_pem_start,
         // .client_key_pem = (const char *)client_key_pem_start,

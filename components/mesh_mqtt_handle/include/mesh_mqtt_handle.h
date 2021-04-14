@@ -134,7 +134,7 @@ mdf_err_t mesh_mqtt_start(char *url);
 *     - MDF_OK
 *     - MDF_FAIL
 */
-mdf_err_t mesh_mqtt_start_topic(char *url, char *topic, char *port);
+mdf_err_t mesh_mqtt_start_topic(char *url, char *username, char *password, char *topic, char *port);
 
 /**
  * @brief  stop mqtt client
